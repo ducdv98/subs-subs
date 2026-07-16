@@ -36,6 +36,8 @@
   function stopSession() {
     if (activeSession) {
       activeSession.video.removeEventListener("timeupdate", activeSession.onTimeUpdate);
+      clearInterval(activeSession.trackWatchIntervalId);
+      activeSession.cancel();
       activeSession = null;
     }
     removeSecondaryLine();
@@ -58,15 +60,52 @@
     const video = player.querySelector("video");
     if (!video) return;
 
-    const primaryLanguageCode = activeTrack.languageCode;
-    const { fetchRequired } = derivePrimaryTrackChange({
-      primaryLanguageCode,
-      secondaryLanguage: settings.secondaryLanguage,
-    });
+    let primaryLanguageCode = activeTrack.languageCode;
+    let secondaryCues = null;
+    let fetchingSecondary = false;
+    let cancelled = false;
 
-    const secondaryCues = fetchRequired
-      ? await fetchSecondaryCues(primaryLanguageCode, settings.secondaryLanguage, getVideoId())
-      : null;
+    function currentLiveLanguageCode(fallback) {
+      const liveTrack = getActiveTrack(player);
+      return liveTrack && liveTrack.languageCode ? liveTrack.languageCode : fallback;
+    }
+
+    // Re-checks the live track after each fetch so a track change that
+    // happens mid-fetch isn't dropped once fetchingSecondary clears.
+    async function settleSecondaryCues(startLanguageCode) {
+      let languageCode = startLanguageCode;
+      for (;;) {
+        secondaryCues = null;
+        const { fetchRequired } = derivePrimaryTrackChange({
+          primaryLanguageCode: languageCode,
+          secondaryLanguage: settings.secondaryLanguage,
+        });
+        const cues = fetchRequired
+          ? await fetchSecondaryCues(languageCode, settings.secondaryLanguage, getVideoId())
+          : null;
+        if (cancelled) return;
+
+        primaryLanguageCode = languageCode;
+        secondaryCues = cues;
+
+        const liveLanguageCode = currentLiveLanguageCode(languageCode);
+        if (liveLanguageCode === languageCode) return;
+        languageCode = liveLanguageCode;
+      }
+    }
+
+    function checkForTrackChange() {
+      if (fetchingSecondary || cancelled) return;
+      const liveLanguageCode = currentLiveLanguageCode(primaryLanguageCode);
+      if (liveLanguageCode === primaryLanguageCode) return;
+
+      fetchingSecondary = true;
+      settleSecondaryCues(liveLanguageCode).finally(() => {
+        fetchingSecondary = false;
+      });
+    }
+
+    await settleSecondaryCues(primaryLanguageCode);
 
     const secondaryLineEl = injectSecondaryLine(player);
 
@@ -83,8 +122,19 @@
       secondaryLineEl.style.visibility = decision.secondaryText ? "visible" : "hidden";
     };
 
+    // Polls independently of `timeupdate` so a manual track switch is
+    // still detected while the video is paused.
+    const trackWatchIntervalId = setInterval(checkForTrackChange, 500);
+
     video.addEventListener("timeupdate", onTimeUpdate);
-    activeSession = { video, onTimeUpdate };
+    activeSession = {
+      video,
+      onTimeUpdate,
+      trackWatchIntervalId,
+      cancel: () => {
+        cancelled = true;
+      },
+    };
   }
 
   async function init() {

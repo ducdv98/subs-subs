@@ -17,13 +17,25 @@
   "content_scripts": [
     {
       "matches": ["https://www.youtube.com/watch*"],
+      "js": ["content/player-bridge.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.youtube.com/watch*"],
       "js": ["content/index.js"],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/settings.js", "lib/subtitle-engine.js", "content/player.js", "content/vtt.js"],
+      "resources": [
+        "lib/settings.js",
+        "lib/subtitle-engine.js",
+        "lib/languages.js",
+        "content/player.js",
+        "content/vtt.js"
+      ],
       "matches": ["https://www.youtube.com/*"]
     }
   ]

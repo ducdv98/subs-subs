@@ -22,10 +22,13 @@ async function syncBadge() {
 
 chrome.action.onClicked.addListener(async () => {
   const settings = await readSettings();
-
-  await chrome.storage.local.set({
-    dualSubMode: toggleDualSubMode(settings.dualSubMode),
+  const nextValue = toggleDualSubMode(settings.dualSubMode);
+  console.log("[DualSubs]", "toolbar icon clicked, toggling dualSubMode", {
+    from: settings.dualSubMode,
+    to: nextValue,
   });
+
+  await chrome.storage.local.set({ dualSubMode: nextValue });
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {

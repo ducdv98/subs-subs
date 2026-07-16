@@ -23,3 +23,5 @@ scripts/bin/harness-cli.exe
 
 
 node_modules/
+
+.tmp-chrome-profile/

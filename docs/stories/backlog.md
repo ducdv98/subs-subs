@@ -10,4 +10,4 @@ the work is selected or when a product decision needs a durable place to land.
 
 | Epic | Description | Status |
 | --- | --- | --- |
-| E01-dual-subtitles | Chrome extension showing YouTube's native captions plus a translated 2nd line for language learning. See `docs/stories/epics/E01-dual-subtitles/SPEC.md`. | sliced (US-001..US-005) |
+| E01-dual-subtitles | Chrome extension showing YouTube's native captions plus a translated 2nd line for language learning. See `docs/stories/epics/E01-dual-subtitles/SPEC.md`. | sliced (US-001..US-006) |

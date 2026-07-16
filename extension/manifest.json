@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Dual Subtitles for YouTube",
+  "version": "0.1.0",
+  "description": "Shows YouTube's native captions plus a translated second line for language learning.",
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {},
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

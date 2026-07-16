@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:extension": "tsc app/domain/settings/settings.ts --outDir extension/lib --module ES2022 --target ES2022 --moduleResolution Bundler --skipLibCheck"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

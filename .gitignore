@@ -20,3 +20,6 @@ scripts/bin/harness-cli.exe
 
 .agents/*
 .claude/*
+
+
+node_modules/

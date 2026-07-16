@@ -3,7 +3,8 @@
 Stories are work packets. They turn product intent into bounded implementation
 and validation work.
 
-No story packets are active yet.
+Active: E01-dual-subtitles (US-001 through US-004). See
+`docs/stories/epics/E01-dual-subtitles/`.
 
 ## Normal Story
 

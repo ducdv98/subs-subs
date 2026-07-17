@@ -1,5 +1,7 @@
 (async () => {
-  const { parseSettings } = await import(chrome.runtime.getURL("lib/settings.js"));
+  const { parseSettings, STYLE_SETTING_KEYS } = await import(
+    chrome.runtime.getURL("lib/settings.js")
+  );
   const { computeRenderDecision, derivePrimaryTrackChange } = await import(
     chrome.runtime.getURL("lib/subtitle-engine.js")
   );
@@ -25,14 +27,28 @@
     document.getElementById(SECONDARY_LINE_ID)?.remove();
   }
 
-  function injectSecondaryLine(player) {
+  function hexToRgba(hex, opacityPercent) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${opacityPercent / 100})`;
+  }
+
+  function applySecondaryLineStyle(el, settings) {
+    el.style.color = hexToRgba(settings.secondaryLineColor, settings.secondaryLineOpacity);
+    el.style.fontSize = `${1.5 * settings.secondaryLineSize}vw`;
+    el.style.bottom = `${settings.secondaryLinePosition}%`;
+  }
+
+  function injectSecondaryLine(player, settings) {
     removeSecondaryLine();
     const el = document.createElement("div");
     el.id = SECONDARY_LINE_ID;
     el.style.cssText =
-      "position:absolute;bottom:8%;left:0;right:0;text-align:center;" +
-      "font-size:1.5vw;line-height:1.4;color:rgba(255,255,255,0.75);" +
-      "text-shadow:1px 1px 2px rgba(0,0,0,0.8);pointer-events:none;z-index:56;";
+      "position:absolute;left:0;right:0;text-align:center;" +
+      "line-height:1.4;text-shadow:1px 1px 2px rgba(0,0,0,0.8);" +
+      "pointer-events:none;z-index:56;";
+    applySecondaryLineStyle(el, settings);
     player.appendChild(el);
     return el;
   }
@@ -228,7 +244,7 @@
 
     await settleSecondaryCues(primaryLanguageCode);
 
-    const secondaryLineEl = injectSecondaryLine(player);
+    const secondaryLineEl = injectSecondaryLine(player, settings);
 
     const onTimeUpdate = () => {
       const decision = computeRenderDecision({
@@ -262,6 +278,7 @@
     video.addEventListener("timeupdate", onTimeUpdate);
     activeSession = {
       video,
+      el: secondaryLineEl,
       onTimeUpdate,
       checkForTrackChange,
       cancel: () => {
@@ -270,10 +287,12 @@
     };
   }
 
+  const SETTINGS_KEYS = ["dualSubMode", "secondaryLanguage", ...STYLE_SETTING_KEYS];
+
   async function init() {
     stopSession();
 
-    const raw = await chrome.storage.local.get(["dualSubMode", "secondaryLanguage"]);
+    const raw = await chrome.storage.local.get(SETTINGS_KEYS);
     const settings = parseSettings(raw);
     console.log(LOG_PREFIX, "init", { raw, settings });
     if (!settings.dualSubMode) {
@@ -284,11 +303,28 @@
     await startSession(settings);
   }
 
+  // Style-only changes restyle the live secondaryLineEl in place — no
+  // session teardown, no CC menu re-drive, no cue re-fetch (see
+  // docs/decisions/0009-style-settings-bypass-full-restart.md). Only
+  // dualSubMode/secondaryLanguage changes go through the full init().
+  async function restyleActiveSession() {
+    if (!activeSession) return;
+    const raw = await chrome.storage.local.get(SETTINGS_KEYS);
+    const settings = parseSettings(raw);
+    applySecondaryLineStyle(activeSession.el, settings);
+  }
+
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
-    if ("dualSubMode" in changes || "secondaryLanguage" in changes) {
+    const changedKeys = Object.keys(changes);
+    if (changedKeys.includes("dualSubMode") || changedKeys.includes("secondaryLanguage")) {
       console.log(LOG_PREFIX, "storage changed", changes);
       init();
+      return;
+    }
+    if (changedKeys.some((key) => STYLE_SETTING_KEYS.includes(key))) {
+      console.log(LOG_PREFIX, "style storage changed", changes);
+      restyleActiveSession();
     }
   });
 

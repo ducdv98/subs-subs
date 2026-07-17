@@ -86,6 +86,23 @@ Track**, **Secondary Language**, **Dual-Sub Mode**.
   watches for changes to YouTube's active caption track and treats any
   change as a new Primary Track.
 
+- **Track-change detection (US-010)**: watching starts as soon as the
+  player element exists, not gated on captions being confirmed active —
+  closes the startup/ad-break race where a switch during that window was
+  previously missed. Detection reacts to YouTube's own track-change
+  signal directly (event-driven) instead of polling, best-effort, no
+  fixed latency SLA.
+
+- **Secondary line style settings (US-011)**: color (free picker, text
+  only), size (scale factor over the base 1.5vw), vertical position
+  (offset from bottom), and opacity (0-100%) are user-configurable, global
+  settings (same persistence pattern as Secondary Language), applied only
+  to the Secondary line — the Primary Track remains YouTube's untouched
+  native overlay. Changing these must not trigger a full session restart
+  (see `docs/decisions/0009-style-settings-bypass-full-restart.md`) —
+  they restyle the live element in place, no CC-menu re-drive, no
+  re-fetch.
+
 - **Secondary Track fetch**: on every new Primary Track (initial load or
   mid-video switch), fetch YouTube's timedtext auto-translate endpoint
   using the Primary Track's language code as source and the Secondary
@@ -145,7 +162,6 @@ Track**, **Secondary Language**, **Dual-Sub Mode**.
 
 - Per-video language override (global setting only).
 - Custom caption renderer replacing YouTube's native overlay.
-- Style/appearance customization UI.
 - Firefox/Edge dedicated builds or testing.
 - Self-hosted or paid external translation API.
 - Live-stream caption handling (only pre-recorded VOD behavior specified).

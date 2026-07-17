@@ -1,4 +1,4 @@
-import { parseSettings, toggleDualSubMode } from "./lib/settings.js";
+import { parseSettings } from "./lib/settings.js";
 
 const BADGE_ON_TEXT = "ON";
 const BADGE_ON_COLOR = "#2e7d32";
@@ -19,17 +19,6 @@ async function readSettings() {
 async function syncBadge() {
   renderBadge((await readSettings()).dualSubMode);
 }
-
-chrome.action.onClicked.addListener(async () => {
-  const settings = await readSettings();
-  const nextValue = toggleDualSubMode(settings.dualSubMode);
-  console.log("[DualSubs]", "toolbar icon clicked, toggling dualSubMode", {
-    from: settings.dualSubMode,
-    to: nextValue,
-  });
-
-  await chrome.storage.local.set({ dualSubMode: nextValue });
-});
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;

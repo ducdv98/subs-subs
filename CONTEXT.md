@@ -17,5 +17,5 @@ The user's single global setting: which language the Secondary Track is translat
 _Avoid_: primary language setting (no such setting exists)
 
 **Dual-Sub Mode**:
-The extension's on/off state, toggled via the browser toolbar icon, persisted globally across videos. When on, both Primary and Secondary Tracks render together and native YouTube CC is force-enabled.
+The extension's on/off state, toggled via a control in the popup (which opens from the toolbar icon), persisted globally across videos. When on, both Primary and Secondary Tracks render together and native YouTube CC is force-enabled.
 _Avoid_: dual mode, extension state

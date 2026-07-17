@@ -1,10 +1,11 @@
 import { parseSettings } from "./lib/settings.js";
 import { SECONDARY_LANGUAGES, isKnownSecondaryLanguage } from "./lib/languages.js";
 
-const statusEl = document.getElementById("dualSubModeStatus");
+const toggle = document.getElementById("dualSubMode");
 const select = document.getElementById("secondaryLanguage");
+const langCode = document.getElementById("secondaryLanguageCode");
 
-function populateOptions(selectedCode) {
+function populateLanguages(selectedCode) {
   const known = isKnownSecondaryLanguage(selectedCode);
   if (!known) {
     console.warn(
@@ -25,15 +26,23 @@ function populateOptions(selectedCode) {
     }),
   );
   select.value = selectedCode;
+  langCode.textContent = selectedCode.toUpperCase();
 }
 
 chrome.storage.local.get(["dualSubMode", "secondaryLanguage"]).then((raw) => {
   const settings = parseSettings(raw);
-  statusEl.textContent = settings.dualSubMode ? "on" : "off";
-  populateOptions(settings.secondaryLanguage);
+  toggle.checked = settings.dualSubMode;
+  populateLanguages(settings.secondaryLanguage);
+});
+
+toggle.addEventListener("change", async () => {
+  const nextValue = toggle.checked;
+  console.log("[DualSubs]", "popup toggle changed", { to: nextValue });
+  await chrome.storage.local.set({ dualSubMode: nextValue });
 });
 
 select.addEventListener("change", () => {
   console.log("[DualSubs]", "secondaryLanguage set", select.value);
+  langCode.textContent = select.value.toUpperCase();
   chrome.storage.local.set({ secondaryLanguage: select.value });
 });

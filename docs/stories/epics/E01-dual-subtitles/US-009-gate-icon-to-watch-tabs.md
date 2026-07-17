@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -59,4 +59,8 @@ None anticipated.
 
 ## Evidence
 
-Add commands, reports, screenshots, or links after validation exists.
+- `npm test` — `tests/domain/tabs/tabs.test.ts` (7 tests) passing, plus full
+  suite (22 tests) green.
+- `npm run typecheck` — clean.
+- Platform (manual load-unpacked check) not yet performed; `--platform 0`
+  recorded until done.

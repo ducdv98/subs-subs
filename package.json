@@ -7,7 +7,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "build:extension": "tsc app/domain/settings/settings.ts --outDir extension/lib --module ES2022 --target ES2022 --moduleResolution Bundler --skipLibCheck && tsc app/domain/subtitle-engine/subtitle-engine.ts --outDir extension/lib --module ES2022 --target ES2022 --moduleResolution Bundler --skipLibCheck"
+    "build:extension": "tsc app/domain/settings/settings.ts --outDir extension/lib --module ES2022 --target ES2022 --moduleResolution Bundler --skipLibCheck && tsc app/domain/subtitle-engine/subtitle-engine.ts --outDir extension/lib --module ES2022 --target ES2022 --moduleResolution Bundler --skipLibCheck && tsc app/domain/tabs/tabs.ts --outDir extension/lib --module ES2022 --target ES2022 --moduleResolution Bundler --skipLibCheck"
   },
   "devDependencies": {
     "playwright": "^1.61.1",

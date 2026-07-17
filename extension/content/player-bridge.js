@@ -2,6 +2,7 @@
   const STATE_ATTR = "data-dual-subs-player-state";
   const VTT_EVENT = "dual-subs-secondary-vtt";
   const SET_ACTIVE_TRACK_EVENT = "dual-subs-set-active-track";
+  const PLAYER_STATE_EVENT = "dual-subs-player-state-changed";
 
   function getCaptionTracks() {
     const player = document.getElementById("movie_player");
@@ -28,12 +29,50 @@
     };
   }
 
+  let lastSerializedState = null;
+
   function publish() {
-    document.documentElement.setAttribute(STATE_ATTR, JSON.stringify(readPlayerState()));
+    const serialized = JSON.stringify(readPlayerState());
+    document.documentElement.setAttribute(STATE_ATTR, serialized);
+    if (serialized !== lastSerializedState) {
+      lastSerializedState = serialized;
+      document.dispatchEvent(new CustomEvent(PLAYER_STATE_EVENT));
+    }
+  }
+
+  // Reacts to the player's own DOM mutations (caption window/button state)
+  // instead of polling on a fixed interval — YouTube redraws these on every
+  // caption track change, so this fires within a frame instead of up to
+  // 250ms late. No documented player API event exists for track changes
+  // (see US-010 design notes), so DOM mutation is the closest signal.
+  let stateObserver = null;
+  function observePlayer(player) {
+    if (stateObserver) stateObserver.disconnect();
+    stateObserver = new MutationObserver(publish);
+    stateObserver.observe(player, { attributes: true, childList: true, subtree: true });
+  }
+
+  // Watching starts as soon as the player element exists, not gated on
+  // captions being confirmed active, so a switch during the startup/ad
+  // window is reflected the moment captions do become active.
+  function watchForPlayer() {
+    const existing = document.getElementById("movie_player");
+    if (existing) {
+      observePlayer(existing);
+      return;
+    }
+    const bootstrapObserver = new MutationObserver(() => {
+      const player = document.getElementById("movie_player");
+      if (!player) return;
+      bootstrapObserver.disconnect();
+      observePlayer(player);
+      publish();
+    });
+    bootstrapObserver.observe(document.documentElement, { childList: true, subtree: true });
   }
 
   publish();
-  setInterval(publish, 250);
+  watchForPlayer();
 
   // YouTube's own CC "Auto-translate" menu drives its player to issue a
   // first-party `timedtext?tlang=` request that carries a valid PoToken (see

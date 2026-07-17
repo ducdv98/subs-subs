@@ -38,6 +38,7 @@
   }
 
   const VTT_EVENT = "dual-subs-secondary-vtt";
+  const PLAYER_STATE_EVENT = "dual-subs-player-state-changed";
   const CAPTURE_TIMEOUT_MS = 8000; // native auto-translate response typically arrives in 1-3s
 
   function waitForCapturedVtt(tlang, timeoutMs) {
@@ -104,7 +105,7 @@
   function stopSession() {
     if (activeSession) {
       activeSession.video.removeEventListener("timeupdate", activeSession.onTimeUpdate);
-      clearInterval(activeSession.trackWatchIntervalId);
+      document.removeEventListener(PLAYER_STATE_EVENT, activeSession.checkForTrackChange);
       activeSession.cancel();
       activeSession = null;
     }
@@ -133,22 +134,6 @@
       return;
     }
 
-    enableCaptions();
-    const activeTrack = await waitFor(
-      () => {
-        const track = getActiveTrack(player);
-        return track && track.languageCode ? track : null;
-      },
-      { timeoutMs: 30000 },
-    );
-    if (!activeTrack) {
-      console.warn(LOG_PREFIX, "captions never became active after 30s, giving up");
-      return;
-    }
-
-    const video = player.querySelector("video");
-    if (!video) return;
-
     const secondaryLanguageKnown = isKnownSecondaryLanguage(settings.secondaryLanguage);
     if (!secondaryLanguageKnown) {
       console.error(
@@ -157,15 +142,10 @@
       );
     }
 
-    let primaryLanguageCode = activeTrack.languageCode;
+    let primaryLanguageCode = null;
     let secondaryCues = null;
     let fetchingSecondary = false;
     let cancelled = false;
-
-    console.log(LOG_PREFIX, "active track", {
-      primaryLanguageCode,
-      secondaryLanguage: settings.secondaryLanguage,
-    });
 
     function currentLiveLanguageCode(fallback) {
       const liveTrack = getActiveTrack(player);
@@ -206,6 +186,8 @@
       }
     }
 
+    // Reacts to content/player-bridge.js's player-state-changed event
+    // instead of polling on a fixed interval.
     function checkForTrackChange() {
       if (fetchingSecondary || cancelled) return;
       const liveLanguageCode = currentLiveLanguageCode(primaryLanguageCode);
@@ -216,6 +198,33 @@
         fetchingSecondary = false;
       });
     }
+
+    enableCaptions();
+    // player-bridge.js (US-010) starts watching for track changes as soon
+    // as the player element exists, not gated on captions being active, so
+    // this wait always resolves with whatever track is live by the time
+    // captions do become active — a switch during a pre-roll ad is never
+    // stale here, even though this listener itself attaches after.
+    const activeTrack = await waitFor(
+      () => {
+        const track = getActiveTrack(player);
+        return track && track.languageCode ? track : null;
+      },
+      { timeoutMs: 30000 },
+    );
+    if (!activeTrack) {
+      console.warn(LOG_PREFIX, "captions never became active after 30s, giving up");
+      return;
+    }
+
+    const video = player.querySelector("video");
+    if (!video) return;
+
+    primaryLanguageCode = activeTrack.languageCode;
+    console.log(LOG_PREFIX, "active track", {
+      primaryLanguageCode,
+      secondaryLanguage: settings.secondaryLanguage,
+    });
 
     await settleSecondaryCues(primaryLanguageCode);
 
@@ -249,15 +258,12 @@
       secondaryLineEl.style.visibility = decision.secondaryText ? "visible" : "hidden";
     };
 
-    // Polls independently of `timeupdate` so a manual track switch is
-    // still detected while the video is paused.
-    const trackWatchIntervalId = setInterval(checkForTrackChange, 500);
-
+    document.addEventListener(PLAYER_STATE_EVENT, checkForTrackChange);
     video.addEventListener("timeupdate", onTimeUpdate);
     activeSession = {
       video,
       onTimeUpdate,
-      trackWatchIntervalId,
+      checkForTrackChange,
       cancel: () => {
         cancelled = true;
       },

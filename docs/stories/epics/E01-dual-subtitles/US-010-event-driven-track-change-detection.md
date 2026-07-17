@@ -98,5 +98,30 @@ None anticipated beyond what US-003/US-004 establish for E2E pattern.
   introduced (Subtitle Engine untouched, per Design Notes).
 - `npm run typecheck` — clean.
 - `node --check` on both modified files — clean.
-- E2E (manual switch of CC track during startup/ad window and mid-video)
-  not yet performed in a live browser; `--e2e 0` recorded until done.
+- E2E — ran against live `youtube.com` (video `jNQXAC9IVRw`, tracks `en`/`de`)
+  via a Playwright-driven Chrome instance with the unpacked extension
+  loaded (`--load-extension`), across three scripted scenarios (scratch
+  scripts, not checked in — no `test:e2e` harness exists yet in this repo,
+  per SPEC.md's Testing Decisions note that this would be the first story
+  to establish one):
+  - **AC1** (event-driven, no fixed poll): called `player.setOption("captions",
+    "track", {...})` directly (the same call YouTube's own CC menu makes)
+    and measured time to `player-bridge.js`'s `dual-subs-player-state-changed`
+    event — fired in ~3ms, `activeLanguageCode` in the published state
+    matched the new track. Confirms the MutationObserver relay reacts to
+    the player's own change, not a 250ms poll tick.
+  - **AC3 / US-004 regression**: with Dual-Sub Mode on and Secondary
+    Language set to a language matching neither track, switched the active
+    track mid-session (`en` → `de`); `content/index.js`'s
+    `checkForTrackChange` (registered via `document.addEventListener`, no
+    `setInterval`) fired and `settleSecondaryCues` re-derived with
+    `primaryLanguageCode: de` — confirmed via console log, independent of
+    the native auto-translate fetch (which is flaky under fast scripted
+    menu-driving in this repo's existing implementation — a pre-existing,
+    unrelated limitation, not something this story touches).
+  - **AC2** (startup/ad window): issued the track-change call immediately
+    after `#movie_player` appeared, before captions were confirmed active,
+    then let the session proceed — the session's very first "active track"
+    log showed the switched-to language (`de`), never the stale default
+    (`en`), confirming a switch during the startup wait isn't missed.
+  All three passed. `--e2e 1` recorded.
